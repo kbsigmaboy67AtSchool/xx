@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>no no blocksi</title>
+<style>
+html,body{margin:0;min-height:100%;background:#0b0b0c;color:#e8e8e8;font-family:system-ui,sans-serif}
+main{min-height:100vh;display:grid;place-items:center;padding:2rem;text-align:center}
+h1{font-size:clamp(1.4rem,4vw,2rem);font-weight:700;letter-spacing:.02em;margin:0}
+p{color:#8a8a93;margin:.75rem 0 0;max-width:28rem;line-height:1.45;font-size:.9rem}
+#stat{margin-top:1rem;font:12px ui-monospace,monospace;color:#6ee7a8}
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>no no blocksi ;)</h1>
+    <p>Same-document guard: any node whose id, class, or attribute name/value contains &quot;blocksi&quot; is removed as soon as it appears.</p>
+    <div id="stat">guard on</div>
+  </div>
+</main>
+<script>
+(function () {
+  "use strict";
+  if (window.__noBlocksiGuard) return;
+  window.__noBlocksiGuard = true;
+
+  var removed = 0;
+  var re = /blocksi/i;
+
+  function hit(el) {
+    if (!el || el.nodeType !== 1) return false;
+    try {
+      if (el.id && re.test(el.id)) return true;
+      if (el.className && re.test(String(el.className))) return true;
+      var attrs = el.attributes;
+      if (!attrs) return false;
+      for (var i = 0; i < attrs.length; i++) {
+        var a = attrs[i];
+        if (re.test(a.name) || re.test(a.value)) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function scrub(root) {
+    if (!root || !root.querySelectorAll) return;
+    try {
+      /* id / class shortcuts first */
+      root.querySelectorAll("[id*=blocksi i], [id*=Blocksi], [class*=blocksi i], [class*=Blocksi]").forEach(kill);
+      root.querySelectorAll("*").forEach(function (el) {
+        if (hit(el)) kill(el);
+      });
+    } catch (e) {
+      try {
+        root.querySelectorAll("*").forEach(function (el) {
+          if (hit(el)) kill(el);
+        });
+      } catch (e2) {}
+    }
+  }
+
+  function kill(el) {
+    try {
+      if (!el || !el.parentNode) return;
+      if (el.id === "stat" || (el.closest && el.closest("main"))) {
+        /* still allow removing overlay-like nodes even under main if they match */
+        if (!(el.id && re.test(el.id)) && !(el.className && re.test(String(el.className)))) {
+          var attrs = el.attributes;
+          var bad = false;
+          if (attrs) {
+            for (var i = 0; i < attrs.length; i++) {
+              if (re.test(attrs[i].name) || re.test(attrs[i].value)) { bad = true; break; }
+            }
+          }
+          if (!bad) return;
+        }
+      }
+      el.remove();
+      removed++;
+      var s = document.getElementById("stat");
+      if (s) s.textContent = "removed " + removed + " blocksi node(s)";
+    } catch (e) {}
+  }
+
+  function tick() {
+    scrub(document);
+  }
+
+  tick();
+  setInterval(tick, 200);
+
+  try {
+    new MutationObserver(function () { tick(); })
+      .observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true
+      });
+  } catch (e) {}
+
+  /* Optional: if this page is same-origin inside a frame host, expose helper */
+  try {
+    window.noBlocksiScrub = tick;
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
